@@ -88,7 +88,7 @@ snapshot_pane() {
 
 shutdown() {
   echo "[entrypoint] SIGTERM received, final backup"
-  [[ -n "$sync_pid" ]] && kill "$sync_pid" 2>/dev/null || true
+  if [[ -n "$sync_pid" ]]; then kill "$sync_pid" 2>/dev/null || true; fi
   # Shutdown hooks run first so anything they write into ~/.claude is part of the final backup.
   run_hooks "${SHUTDOWN_D:-$HOME/shutdown.d}" "${SHUTDOWN_HOOK_TIMEOUT:-10}"
   "$here/backup.sh" || echo "[entrypoint] final backup failed"

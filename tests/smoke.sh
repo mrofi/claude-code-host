@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2015  # "check && pass || bad": pass cannot fail, so the pattern is safe here
-# Smoke test: boots the real image against a local MinIO with a stub `claude`.
+# Smoke test: boots the real image against a local S3 server (rclone serve s3) with a stub `claude`.
 # Covers: boot -> tmux server session, seeded state, SIGTERM final backup, restore on 2nd boot,
 # boot with an unreachable bucket, two instances on one prefix, a failing claude, extension hooks and a
 # derived image.   Usage: tests/smoke.sh [image]
 set -euo pipefail
 IMAGE="${1:-claude-host}"
+# Local S3 server: rclone's own (`rclone serve s3`). MinIO no longer publishes images.
+S3_SERVER_IMAGE="${S3_SERVER_IMAGE:-docker.io/rclone/rclone:latest}"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUCKET=smoke
 PORT=19000
@@ -14,8 +16,8 @@ work="$(mktemp -d)"
 fail=0
 pass() { echo "ok   - $*"; }
 bad()  { echo "FAIL - $*"; fail=1; }
-cleanup() { docker rmi -f claude-host-smoke-ext >/dev/null 2>&1 || true; for c in smoke-minio smoke-a smoke-b smoke-c smoke-d smoke-e; do docker rm -f "$c" >/dev/null 2>&1 || true; done; rm -rf "$work"; }
-cleanup_stale() { for c in smoke-minio smoke-a smoke-b smoke-c smoke-d smoke-e; do docker rm -f "$c" >/dev/null 2>&1 || true; done; }
+cleanup() { docker rmi -f claude-host-smoke-ext >/dev/null 2>&1 || true; for c in smoke-s3 smoke-a smoke-b smoke-c smoke-d smoke-e; do docker rm -f "$c" >/dev/null 2>&1 || true; done; rm -rf "$work"; }
+cleanup_stale() { for c in smoke-s3 smoke-a smoke-b smoke-c smoke-d smoke-e; do docker rm -f "$c" >/dev/null 2>&1 || true; done; }
 cleanup_stale
 trap cleanup EXIT
 
@@ -27,17 +29,17 @@ sleep infinity
 STUB
 chmod +x "$work/claude"
 
-s3env=(-e "S3_BUCKET=$BUCKET" -e S3_ENDPOINT="http://127.0.0.1:$PORT" -e "S3_ACCESS_KEY_ID=$KEY" -e "S3_SECRET_ACCESS_KEY=$SECRET" -e S3_PROVIDER=Minio -e BACKUP_INTERVAL=3600 -e CRYPT_PASSWORD=smoke-crypt-pw -e CRYPT_SALT=smoke-salt -e SNAPSHOT_DELAY=3)
+s3env=(-e "S3_BUCKET=$BUCKET" -e S3_ENDPOINT="http://127.0.0.1:$PORT" -e "S3_ACCESS_KEY_ID=$KEY" -e "S3_SECRET_ACCESS_KEY=$SECRET" -e S3_PROVIDER=Other -e BACKUP_INTERVAL=3600 -e CRYPT_PASSWORD=smoke-crypt-pw -e CRYPT_SALT=smoke-salt -e SNAPSHOT_DELAY=3)
 run_ctr() { # name, extra docker args...
   local name=$1; shift
   docker run -d --name "$name" --network host -v "$work/claude":/home/node/bin/claude:ro "${s3env[@]}" "$@" "$IMAGE" >/dev/null
 }
 
-docker run -d --name smoke-minio --network host -e MINIO_ROOT_USER=$KEY -e MINIO_ROOT_PASSWORD=$SECRET \
-  docker.io/minio/minio server /data --address ":$PORT" >/dev/null
-for _ in $(seq 30); do curl -sf "http://127.0.0.1:$PORT/minio/health/live" >/dev/null && break; sleep 1; done
+docker run -d --name smoke-s3 --network host "$S3_SERVER_IMAGE" \
+  serve s3 /data --addr ":$PORT" --auth-key "$KEY,$SECRET" >/dev/null
+for _ in $(seq 30); do curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break; sleep 1; done
 docker run --rm --network host "${s3env[@]}" --entrypoint rclone "$IMAGE" mkdir ":s3:$BUCKET" --config /dev/null \
-  --s3-provider Minio --s3-endpoint "http://127.0.0.1:$PORT" --s3-access-key-id $KEY --s3-secret-access-key $SECRET
+  --s3-provider Other --s3-endpoint "http://127.0.0.1:$PORT" --s3-access-key-id $KEY --s3-secret-access-key $SECRET
 
 # --- 1. empty bucket boot
 run_ctr smoke-a -e PORT=17861
@@ -62,7 +64,7 @@ took=$((SECONDS - start))
 logs_a="$(docker logs smoke-a 2>&1)"
 grep -q "final backup" <<<"$logs_a" && pass "final backup ran" || bad "final backup did not run"
 listing="$(docker run --rm --network host "${s3env[@]}" --entrypoint rclone "$IMAGE" lsf -R ":s3:$BUCKET" --config /dev/null \
-  --s3-provider Minio --s3-endpoint "http://127.0.0.1:$PORT" --s3-access-key-id $KEY --s3-secret-access-key $SECRET)"
+  --s3-provider Other --s3-endpoint "http://127.0.0.1:$PORT" --s3-access-key-id $KEY --s3-secret-access-key $SECRET)"
 [[ -n "$listing" && "$listing" != *credentials* && "$listing" != *SKILL* ]] && pass "encrypted objects reached the bucket (no plaintext names)" || bad "bucket empty or plaintext names: $listing"
 
 # --- 3. second boot restores

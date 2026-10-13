@@ -92,11 +92,11 @@ Node 22 (Debian bookworm), tmux, git, curl, jq, rclone, openssh-client, a non-ro
 bats tests/*.bats                               # unit tests (needs bats, rclone, tmux, jq, git, socat)
 shellcheck -x -P SCRIPTDIR scripts/*.sh tests/*.sh
 docker build --build-arg INSTALL_CLAUDE=0 -t claude-host .
-tests/smoke.sh claude-host                      # boots the image against a local MinIO with a stub claude
+tests/smoke.sh claude-host                      # boots the image against a local S3 server (rclone serve s3) with a stub claude
 tests/layer-scan.sh claude-host                 # looks for secrets in every image layer
 ```
 
-The smoke test uses MinIO, which is more forgiving than some real providers. After changing how files are written to the bucket, also try the scripts once against your real bucket with encryption on, in a throwaway `S3_PREFIX`.
+The smoke test uses a local S3 server, which is more forgiving than some real providers. After changing how files are written to the bucket, also try the scripts once against your real bucket with encryption on, in a throwaway `S3_PREFIX`.
 
 ## License
 
