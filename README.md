@@ -103,4 +103,4 @@ The smoke test uses a local S3 server, which is more forgiving than some real pr
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Claude Code itself is licensed separately by Anthropic.
+[MIT with the Commons Clause](LICENSE). You can use, modify and self-host it freely, including inside your own company and for your own products. You may **not** sell it, which includes offering it (or a service substantially made of it) to third parties as a paid SaaS or PaaS. For that, see [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md) to get a commercial license. Releases published before the Commons Clause was added stay under MIT. Claude Code itself is licensed separately by Anthropic.
