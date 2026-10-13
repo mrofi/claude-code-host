@@ -40,6 +40,8 @@ Single user, one machine. It is not a multi-tenant service.
    docker run -d --name claude-host -p 8080:8080 my-claude-host
    ```
 
+   The port (health endpoint only) is `PORT`, default 8080: `-e PORT=9000 -p 9000:9000` to change it.
+
 3. Log in once. The container starts, but Claude Code needs your login. Pick one:
    - **Upload an existing login** (Linux): `scripts/upload-login.sh ~/.claude/.credentials.json ~/.claude.json` against your bucket, then start the container. See [docs/how-it-works.md](docs/how-it-works.md#login).
    - On macOS the login lives in the Keychain, not in a file, so log in inside the container instead: `docker exec -it claude-host tmux attach -t server`, then follow the login prompt. (Not tested by me.)

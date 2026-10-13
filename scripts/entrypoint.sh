@@ -5,6 +5,13 @@ set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 workdir="$HOME/work"
+# PORT: where the health endpoint listens (HTTP 200). Validated here so a typo cannot take the container down.
+port="${PORT:-8080}"
+if ! [[ "$port" =~ ^[0-9]+$ ]] || (( port < 1 || port > 65535 )); then
+  echo "[entrypoint] WARNING invalid PORT '$port' (want 1-65535), using 8080"
+  port=8080
+fi
+export PORT="$port"
 mode="${MAIN_MODE:-server}"
 # One knob for both limits: server-mode capacity and the spawn-session cap (see spawn-session.sh).
 capacity="${CAPACITY:-${MAX_SESSIONS:-3}}"

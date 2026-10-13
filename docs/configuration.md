@@ -35,7 +35,7 @@ Tokens are handed to git through a credential helper for those hosts only. They 
 
 | Name | Default | Meaning |
 |---|---|---|
-| `PORT` | `8080` | Port of the health endpoint (HTTP 200 `ok`). Platforms that probe a port, such as Hugging Face Spaces, need it to match. |
+| `PORT` | `8080` | Port of the health endpoint (HTTP 200 `ok`). Platforms that probe a port, such as Hugging Face Spaces, need it to match. An invalid value (not a number from 1 to 65535) logs a warning and uses 8080. With plain Docker, publish the same port: `-e PORT=9000 -p 9000:9000`. |
 | `ENTRYPOINT_D` | `~/entrypoint.d` | Directory of boot hooks. |
 | `SHUTDOWN_D` | `~/shutdown.d` | Directory of shutdown hooks. |
 | `HOOK_TIMEOUT` | `60` | Seconds a boot hook may run. |

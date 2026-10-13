@@ -161,4 +161,20 @@ else
   [[ "$(docker inspect -f '{{.State.Running}}' smoke-a)" == true ]] && pass "the container stays up without claude" || bad "container exited without claude"
 fi
 docker rm -f smoke-a >/dev/null
+# --- 11. PORT: a custom value is honored; an invalid one falls back to 8080 with a warning
+docker run -d --name smoke-a -p 19321:19321 -e PORT=19321 "$IMAGE" >/dev/null
+sleep 4
+[[ "$(curl -s --max-time 5 http://127.0.0.1:19321/)" == ok ]] && pass "PORT=19321 moves the health endpoint to 19321" || bad "custom PORT not honored"
+docker rm -f smoke-a >/dev/null
+for bad_port in abc 0 99999 ""; do
+  docker run -d --name smoke-a -p 18081:8080 -e "PORT=$bad_port" "$IMAGE" >/dev/null
+  sleep 4
+  if [[ -z "$bad_port" ]]; then
+    [[ "$(curl -s --max-time 5 http://127.0.0.1:18081/)" == ok ]] && pass "empty PORT uses 8080" || bad "empty PORT broke the health endpoint"
+  else
+    grep -q "WARNING invalid PORT '$bad_port'" <<<"$(docker logs smoke-a 2>&1)" && [[ "$(curl -s --max-time 5 http://127.0.0.1:18081/)" == ok ]] \
+      && pass "invalid PORT=$bad_port warns and falls back to 8080" || bad "invalid PORT=$bad_port not handled"
+  fi
+  docker rm -f smoke-a >/dev/null
+done
 (( fail == 0 )) && echo "SMOKE PASSED" || { echo "SMOKE FAILED"; exit 1; }
