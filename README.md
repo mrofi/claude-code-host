@@ -16,6 +16,7 @@ Single user, one machine. It is not a multi-tenant service.
 
 - **Sessions run with `--dangerously-skip-permissions`.** Nobody approves their commands. Anything the container can reach (tokens in its environment, cloud credentials, networks), a prompt-injected repo or web page could use. Give the container only credentials you are willing to lose, preferably read-only.
 - **Claude Code is not open source and this image does not include it.** The published image leaves it out; you install it in your own Dockerfile (below), under [Anthropic's terms](https://www.anthropic.com/legal/commercial-terms). If you build this repo yourself with `INSTALL_CLAUDE=1` (the default), npm downloads it on your machine.
+- **Git tokens.** `GITHUB_TOKEN` / `AZDO_PAT` are used by every git command in the container, pushes included, and sessions run without permission prompts. Prefer a read-only fine-grained token; a write token lets a prompt-injected repo or page push to those repos.
 - **Remote Control needs a claude.ai login** (a subscription account), not an API key. Whoever holds the login credentials has your account, so treat the bucket and its encryption password accordingly.
 - The refresh behavior of a login that was copied from another machine is only lightly tested (see [docs/how-it-works.md](docs/how-it-works.md#login)).
 

@@ -20,6 +20,12 @@ RUN apt-get update \
       npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" && npm cache clean --force; \
     fi
 
+# git asks this helper for credentials for every command (clone, pull, push), not only for spawn-session.sh. It answers
+# only for github.com (GITHUB_TOKEN) and Azure DevOps (AZDO_PAT), only when that variable is set, and says nothing
+# otherwise. GIT_TERMINAL_PROMPT=0 makes a missing token fail fast instead of waiting for a password nobody can type.
+RUN git config --system credential.helper /home/node/bin/git-credential-env.sh
+ENV GIT_TERMINAL_PROMPT=0
+
 # node:22 ships a non-root `node` user with uid 1000. Claude Code refuses --dangerously-skip-permissions as
 # root, and many hosts require a non-root uid, so everything runs as `node`.
 USER node

@@ -26,10 +26,10 @@ Everything is an environment variable. Unset optional ones are skipped quietly. 
 | `CAPACITY` | `MAX_SESSIONS` | Override for the server capacity only. |
 | `SESSION_CAP` | `MAX_SESSIONS` | Override for the `spawn-session.sh` cap only. |
 | `MAIN_MODE` | `server` | `interactive` runs a single `claude --remote-control main` instead of the multi-session server. |
-| `GITHUB_TOKEN` (secret) | none | Lets `spawn-session.sh` clone private github.com repos. Use a read-only fine-grained token. |
+| `GITHUB_TOKEN` (secret) | none | Used by every git command in the container for github.com (clone, pull, push). Use a read-only fine-grained token unless sessions must push. |
 | `AZDO_PAT` (secret) | none | Same for Azure DevOps (`dev.azure.com`, `*.visualstudio.com`). Code: Read is enough. |
 
-Tokens are handed to git through a credential helper for those hosts only. They are not put in the clone URL, `.git/config` or process arguments. Without a token, cloning a private repo fails and no session starts.
+Git is configured system-wide with a credential helper (`git-credential-env.sh`), so **every** git command in the container (clone, pull, push), including those the sessions run themselves, uses the token for those hosts. The token is never put in a URL, `.git/config` or a process argument. With a read-only token, pushes are refused by the host. With a write token, the sessions (which run without permission prompts) can push to the repos it covers: use a fine-grained token limited to the repos you need, with an expiry. Without a token, git fails fast instead of prompting.
 
 ## Runtime
 
