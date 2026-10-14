@@ -178,12 +178,17 @@ for bad_port in abc 0 99999 ""; do
   docker rm -f smoke-a >/dev/null
 done
 # --- 12. git uses the token for every command (not only spawn-session.sh), for the right hosts only
-docker run -d --name smoke-a --network host -v "$work/claude":/home/node/bin/claude:ro -e PORT=17890 -e GITHUB_TOKEN=ghp_SMOKETOKEN -e AZDO_PAT=azdo-smoketoken "$IMAGE" >/dev/null
+docker run -d --name smoke-a --network host -v "$work/claude":/home/node/bin/claude:ro -e PORT=17890 -e GITHUB_TOKEN=ghp_SMOKETOKEN -e GITHUB_TOKEN_ROKETID=ghp_ROKETID -e GITHUB_TOKEN_LIVECMS=ghp_LIVECMS -e AZDO_PAT=azdo-smoketoken "$IMAGE" >/dev/null
 sleep 4
 cred() { docker exec smoke-a sh -c "printf 'protocol=https\nhost=$1\n\n' | git credential fill 2>&1"; }
+credurl() { docker exec smoke-a sh -c "printf 'url=$1\n\n' | git credential fill 2>&1"; }
 [[ "$(docker exec smoke-a git config --system --get credential.helper)" == /home/node/bin/git-credential-env.sh ]] && pass "git credential helper is set system-wide" || bad "credential helper not configured"
 out="$(cred github.com || true)"; [[ "$out" == *username=x-access-token* && "$out" == *password=ghp_SMOKETOKEN* ]] && pass "git gets GITHUB_TOKEN for github.com" || bad "no token for github.com"
 out="$(cred dev.azure.com || true)"; [[ "$out" == *password=azdo-smoketoken* ]] && pass "git gets AZDO_PAT for dev.azure.com" || bad "no token for Azure DevOps"
+[[ "$(docker exec smoke-a git config --system --get credential.https://github.com.useHttpPath)" == true ]] && pass "git is told to send the repo path to the helper for github.com" || bad "useHttpPath not set"
+out="$(credurl https://github.com/roketid/proxy.git || true)"; [[ "$out" == *password=ghp_ROKETID* ]] && pass "a roketid repo gets GITHUB_TOKEN_ROKETID" || bad "owner token not used for roketid"
+out="$(credurl https://github.com/LiveCMS/site || true)"; [[ "$out" == *password=ghp_LIVECMS* ]] && pass "a livecms repo gets GITHUB_TOKEN_LIVECMS" || bad "owner token not used for livecms"
+out="$(credurl https://github.com/mrofi/other || true)"; [[ "$out" == *password=ghp_SMOKETOKEN* ]] && pass "another owner falls back to GITHUB_TOKEN" || bad "fallback token not used"
 out="$(cred gitlab.com || true)"; [[ "$out" != *smoketoken* && "$out" != *SMOKETOKEN* ]] && pass "no token is offered to other hosts" || bad "token offered to gitlab.com"
 docker exec smoke-a sh -c 'cd /tmp && rm -rf r && git init -q r && cd r && git remote add origin https://github.com/acme/x.git && ! grep -rqE "SMOKETOKEN|smoketoken" .git' && pass "token is not written to .git/config" || bad "token leaked into .git"
 docker rm -f smoke-a >/dev/null

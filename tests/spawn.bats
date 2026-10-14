@@ -144,3 +144,23 @@ GH="https://github.com/acme/repo"
     fi
   done
 }
+
+@test "github.com: GITHUB_TOKEN_<OWNER> is chosen by the repo owner (case-insensitive, - becomes _), else GITHUB_TOKEN" {
+  export GITHUB_TOKEN=default-tok GITHUB_TOKEN_ROKETID=roketid-tok GITHUB_TOKEN_LIVECMS=livecms-tok GITHUB_TOKEN_MY_ORG=myorg-tok
+  ask() { printf 'protocol=https\nhost=github.com\npath=%s\n\n' "$1" | git-credential-env.sh get; }
+  run ask roketid/proxy.git;  [[ "$output" == *password=roketid-tok* ]]
+  run ask LiveCMS/site;       [[ "$output" == *password=livecms-tok* ]]
+  run ask my-org/x;           [[ "$output" == *password=myorg-tok* ]]
+  run ask mrofi/repo;         [[ "$output" == *password=default-tok* ]]
+  run ask "";                 [[ "$output" == *password=default-tok* ]]
+  unset GITHUB_TOKEN
+  run ask mrofi/repo;         [ -z "$output" ]
+  run ask roketid/proxy.git;  [[ "$output" == *password=roketid-tok* ]]
+}
+
+@test "an owner name cannot be used to read another variable" {
+  export GITHUB_TOKEN=default-tok SECRET_THING=leak
+  run bash -c 'printf "host=github.com\npath=%s\n\n" "x\$(echo pwn)/y" | git-credential-env.sh get'
+  [[ "$output" == *password=default-tok* ]]
+  [[ "$output" != *leak* ]]
+}
