@@ -7,6 +7,6 @@ if [[ -z "${CODE_URL:-}" ]]; then
   echo "code-url.sh: CODE_URL is not set (public base URL of this host), cannot build a link. Tell the owner to set it." >&2
   exit 1
 fi
-dir="$(realpath -- "${1:-$PWD}")"
+dir="$(realpath -m -- "${1:-$PWD}")"
 [[ -d "$dir" ]] || { echo "code-url.sh: not a directory: $dir" >&2; exit 1; }
 printf '%s/code/?folder=%s\n' "${CODE_URL%/}" "$(jq -rn --arg d "$dir" '$d | @uri')"
