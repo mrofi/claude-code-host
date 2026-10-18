@@ -40,6 +40,7 @@ Git is configured system-wide with a credential helper (`git-credential-env.sh`)
 |---|---|---|
 | `PORT` | `8080` | Port of the gateway: health endpoint (HTTP 200 `ok`) and, if enabled, `/code`. Platforms that probe a port, such as Hugging Face Spaces, need it to match. An invalid value (not a number from 1 to 65535) logs a warning and uses 8080. With plain Docker, publish the same port: `-e PORT=9000 -p 9000:9000`. |
 | `CODE_PASSWORD` (secret) | none | Turns on VS Code in the browser at `/code` (needs an image built with `INSTALL_CODE_SERVER=1`). Without it code-server never starts. It is removed from the environment of everything the entrypoint starts afterwards, such as the Claude sessions. |
+| `CODE_URL` | none | Public base URL of this host (for example `https://my-host.example.com`). Lets the agents print a ready link with `code-url.sh [path]` when you ask for the VS Code URL. Not secret. |
 | `CODE_PORT` | `8081` | Loopback port code-server listens on (never exposed; `/code` on `PORT` proxies to it). Must differ from `PORT`. |
 | `ENTRYPOINT_D` | `~/entrypoint.d` | Directory of boot hooks. |
 | `SHUTDOWN_D` | `~/shutdown.d` | Directory of shutdown hooks. |

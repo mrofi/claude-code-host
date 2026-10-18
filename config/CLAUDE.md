@@ -22,6 +22,12 @@ Run these from any session (they are on PATH):
 - The number of spawned sessions is limited (`MAX_SESSIONS`, default 3). `spawn-session.sh` says so when the limit is reached; kill one before starting another.
 - Without `--repo` you get an empty working directory.
 
+## Opening a folder in VS Code
+
+If the owner asks for the VS Code link (or to "open this in VS Code"), you cannot open a browser yourself: run
+`code-url.sh [path]` (default: the current directory) and give them the URL it prints. If it says `CODE_URL` is not
+set, tell the owner that VS Code in the browser is not configured for this host. Never try to log in to it.
+
 ## Things to know
 
 - This container can restart at any time. `~/work` is **not** saved. Commit and push work you want to keep.

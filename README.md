@@ -51,7 +51,7 @@ Single user, one machine. It is not a multi-tenant service.
 
 ## VS Code in the browser (optional)
 
-Build with `INSTALL_CODE_SERVER=1` and set `CODE_PASSWORD`: `http://host:8080/code?folder=/home/node/work/<repo>` opens that folder in code-server. Off unless the password is set. It is a shell in the container, so read [the notes](docs/configuration.md#vs-code-in-the-browser) before exposing it.
+Build with `INSTALL_CODE_SERVER=1` and set `CODE_PASSWORD`: `http://host:8080/code?folder=/home/node/work/<repo>` opens that folder in code-server. Off unless the password is set. Set `CODE_URL` to the host's public URL and ask a session for "the VS Code link": it runs `code-url.sh` and hands you the URL. It is a shell in the container, so read [the notes](docs/configuration.md#vs-code-in-the-browser) before exposing it.
 
 ## Persistence (optional, recommended)
 
@@ -92,6 +92,7 @@ Node 22 (Debian bookworm), tmux, git, curl, jq, rclone, openssh-client, a non-ro
 | `entrypoint.sh` | Boot: restore, seed config, health endpoint, backup loop, hooks, the tmux `server` session. |
 | `spawn-session.sh`, `list-sessions.sh`, `kill-session.sh` | More Claude Code sessions in tmux, optionally on a cloned repo (`MAX_SESSIONS` caps them). |
 | `backup.sh`, `restore.sh`, `upload-login.sh`, `lease.sh` | Persistence. |
+| `code-url.sh` | Prints the `/code?folder=` link for a directory, from `CODE_URL`. |
 | `git-credential-env.sh` | Serves `GITHUB_TOKEN` / `AZDO_PAT` to git for those hosts only. |
 
 ## Develop
