@@ -3,10 +3,14 @@
 #   INSTALL_CLAUDE=1  install Claude Code from npm (default, for building it yourself).
 #                     The published base image is built with INSTALL_CLAUDE=0; derived images add it.
 #   CLAUDE_CODE_VERSION  version to install when INSTALL_CLAUDE=1.
+#   INSTALL_CODE_SERVER=1  add code-server (VS Code in the browser at /code, needs CODE_PASSWORD at run time). Default 0.
+#   CODE_SERVER_VERSION  version to install when INSTALL_CODE_SERVER=1.
 FROM node:22-bookworm-slim
 
 ARG INSTALL_CLAUDE=1
 ARG CLAUDE_CODE_VERSION=latest
+ARG INSTALL_CODE_SERVER=0
+ARG CODE_SERVER_VERSION=4.96.4
 
 LABEL org.opencontainers.image.title="claude-code-host" \
       org.opencontainers.image.description="Base image for a Claude Code host: tmux, Remote Control, S3-backed ~/.claude" \
@@ -18,6 +22,16 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/* \
  && if [ "$INSTALL_CLAUDE" = "1" ]; then \
       npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" && npm cache clean --force; \
+    fi
+
+# code-server from the official release tarball (not the curl|sh installer), unpacked under /usr/local.
+RUN if [ "$INSTALL_CODE_SERVER" = "1" ]; then \
+      arch="$(dpkg --print-architecture)" \
+ && curl -fsSL -o /tmp/cs.tgz "https://github.com/coder/code-server/releases/download/v${CODE_SERVER_VERSION}/code-server-${CODE_SERVER_VERSION}-linux-${arch}.tar.gz" \
+ && mkdir -p /usr/local/lib/code-server \
+ && tar -xzf /tmp/cs.tgz -C /usr/local/lib/code-server --strip-components=1 \
+ && ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server \
+ && rm /tmp/cs.tgz; \
     fi
 
 # git asks this helper for credentials for every command (clone, pull, push), not only for spawn-session.sh. It answers

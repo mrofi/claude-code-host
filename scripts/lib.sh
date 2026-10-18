@@ -67,4 +67,5 @@ check_crypt_access() {
 BACKUP_EXCLUDES=(
   --exclude "/cache/**" --exclude "/statsig/**" --exclude "/shell-snapshots/**"
   --exclude "/debug/**" --exclude "/ide/**" --exclude "*.lock"
+  --exclude "/code-server/CachedData/**" --exclude "/code-server/logs/**" --exclude "/code-server/Crash Reports/**"
 )

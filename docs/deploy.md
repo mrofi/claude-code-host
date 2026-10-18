@@ -1,6 +1,6 @@
 # Deploying
 
-The image is a normal container with one open port (the health endpoint, `PORT`, default 8080). Remote Control connects **outbound** to Anthropic, so you do not need to expose anything for claude.ai/code to reach it. The port is only for platforms that insist on probing one.
+The image is a normal container with one open port (`PORT`, default 8080): the health endpoint, plus VS Code at `/code` if you enabled it (see [configuration](configuration.md#vs-code-in-the-browser); that makes the port sensitive, so put TLS in front of it). Remote Control connects **outbound** to Anthropic, so you do not need to expose anything for claude.ai/code to reach it. The port is only for platforms that insist on probing one.
 
 Build your own image first (see the README: the base has no Claude Code). Below, `my-claude-host` is that image.
 

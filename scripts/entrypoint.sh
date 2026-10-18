@@ -29,6 +29,21 @@ mkdir -p "$HOME/.cache/claude-host" && printf %s "$INSTANCE_ID" > "$HOME/.cache/
 
 echo "[entrypoint] starting as uid $(id -u), MAIN_MODE=$mode"
 
+# Optional VS Code in the browser at /code. Needs the binary (INSTALL_CODE_SERVER=1) and CODE_PASSWORD: it gives a
+# shell in this container, so it never starts without a password. It listens on loopback only; health.js proxies
+# /code to it (CODE_UPSTREAM). Its settings and extensions live under ~/.claude, so the S3 backup carries them.
+code_pid=""
+if [[ -n "${CODE_PASSWORD:-}" ]]; then
+  code_port="${CODE_PORT:-8081}"
+  if ! command -v code-server >/dev/null 2>&1; then
+    echo "[entrypoint] WARNING CODE_PASSWORD is set but code-server is not installed (build with INSTALL_CODE_SERVER=1), /code disabled"
+  elif ! [[ "$code_port" =~ ^[0-9]+$ ]] || (( code_port < 1 || code_port > 65535 || code_port == port )); then
+    echo "[entrypoint] WARNING invalid CODE_PORT '$code_port' (want 1-65535, not PORT), /code disabled"
+  else
+    export CODE_UPSTREAM="$code_port"   # health.js proxies /code here; code-server itself starts after restore (below)
+  fi
+fi
+
 # Health first, so a platform that probes a port sees a live service even if restore is slow.
 node "$here/health.js" &
 health_pid=$!
@@ -38,6 +53,17 @@ timeout 90 "$here/restore.sh" || echo "[entrypoint] restore failed, continuing w
 "$here/lease.sh" take || echo "[entrypoint] could not claim the backup lease (see above), continuing"
 "$here/seed-state.sh" "$workdir"
 "$here/seed-config.sh" || echo "[entrypoint] seed-config failed (see above), continuing"
+# code-server starts only now: restore writes into ~/.claude, where its settings and extensions live.
+if [[ -n "${CODE_UPSTREAM:-}" ]]; then
+  # code-server lets the PORT env var override --bind-addr, so pin it to its own port.
+  PORT="$CODE_UPSTREAM" PASSWORD="$CODE_PASSWORD" code-server --bind-addr "127.0.0.1:$CODE_UPSTREAM" --auth password \
+    --user-data-dir "$HOME/.claude/code-server" --disable-telemetry --disable-update-check \
+    "$workdir" >"$HOME/.cache/claude-host/code-server.log" 2>&1 &
+  code_pid=$!
+  echo "[entrypoint] code-server started, served at /code"
+fi
+# Keep the password out of everything started from here on (sessions run without permission prompts).
+unset CODE_PASSWORD
 if [[ -n "${S3_BUCKET:-}" && -z "${CRYPT_PASSWORD:-}" && "${ALLOW_UNENCRYPTED:-}" != 1 ]]; then
   echo "[entrypoint] ERROR S3_BUCKET is set but CRYPT_PASSWORD is not: persistence disabled, no backup loop"
   sync_pid=""
@@ -102,6 +128,7 @@ shutdown() {
   "$here/lease.sh" release || true
   tmux kill-server 2>/dev/null || true
   kill "$health_pid" 2>/dev/null || true
+  if [[ -n "$code_pid" ]]; then kill "$code_pid" 2>/dev/null || true; fi
   exit 0
 }
 trap shutdown TERM INT

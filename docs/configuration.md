@@ -38,10 +38,18 @@ Git is configured system-wide with a credential helper (`git-credential-env.sh`)
 
 | Name | Default | Meaning |
 |---|---|---|
-| `PORT` | `8080` | Port of the health endpoint (HTTP 200 `ok`). Platforms that probe a port, such as Hugging Face Spaces, need it to match. An invalid value (not a number from 1 to 65535) logs a warning and uses 8080. With plain Docker, publish the same port: `-e PORT=9000 -p 9000:9000`. |
+| `PORT` | `8080` | Port of the gateway: health endpoint (HTTP 200 `ok`) and, if enabled, `/code`. Platforms that probe a port, such as Hugging Face Spaces, need it to match. An invalid value (not a number from 1 to 65535) logs a warning and uses 8080. With plain Docker, publish the same port: `-e PORT=9000 -p 9000:9000`. |
+| `CODE_PASSWORD` (secret) | none | Turns on VS Code in the browser at `/code` (needs an image built with `INSTALL_CODE_SERVER=1`). Without it code-server never starts. It is removed from the environment of everything the entrypoint starts afterwards, such as the Claude sessions. |
+| `CODE_PORT` | `8081` | Loopback port code-server listens on (never exposed; `/code` on `PORT` proxies to it). Must differ from `PORT`. |
 | `ENTRYPOINT_D` | `~/entrypoint.d` | Directory of boot hooks. |
 | `SHUTDOWN_D` | `~/shutdown.d` | Directory of shutdown hooks. |
 | `HOOK_TIMEOUT` | `60` | Seconds a boot hook may run. |
 | `SHUTDOWN_HOOK_TIMEOUT` | `10` | Seconds a shutdown hook may run. Platforms give a short grace period on `SIGTERM`, and the final backup runs after the hooks. |
 | `SNAPSHOT_DELAY` | `20` | Seconds before the first snapshot of the `server` pane appears in the logs. |
 | `CLAUDE_D`, `SETTINGS_D`, `CONFIG_DIR` | under `~/config` | Where `CLAUDE.d`, `settings.d` and the base config are read from. |
+
+## VS Code in the browser
+
+Build with `--build-arg INSTALL_CODE_SERVER=1` (version: `CODE_SERVER_VERSION`), run with `-e CODE_PASSWORD=...`, then open `http://host:8080/code?folder=/home/node/work/<repo>`. A bare `/code` opens `~/work`. After the password prompt VS Code opens the folder given in `?folder=`. Its settings and extensions are stored in `~/.claude/code-server`, so the S3 backup carries them (caches and logs are excluded).
+
+This is a shell in the container, with the same reach as the sessions: use a long password, serve it over HTTPS (your platform's TLS, or a reverse proxy), and do not publish the port if you do not need `/code`. The code-server log is `~/.cache/claude-host/code-server.log`.

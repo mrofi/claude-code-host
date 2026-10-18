@@ -41,13 +41,17 @@ Single user, one machine. It is not a multi-tenant service.
    docker run -d --name claude-host -p 8080:8080 my-claude-host
    ```
 
-   The port (health endpoint only) is `PORT`, default 8080: `-e PORT=9000 -p 9000:9000` to change it.
+   The port (health endpoint only, unless you enable `/code` below) is `PORT`, default 8080: `-e PORT=9000 -p 9000:9000` to change it.
 
 3. Log in once. The container starts, but Claude Code needs your login. Pick one:
    - **Upload an existing login** (Linux): `scripts/upload-login.sh ~/.claude/.credentials.json ~/.claude.json` against your bucket, then start the container. See [docs/how-it-works.md](docs/how-it-works.md#login).
    - On macOS the login lives in the Keychain, not in a file, so log in inside the container instead: `docker exec -it claude-host tmux attach -t server`, then follow the login prompt. (Not tested by me.)
 
 4. Open claude.ai/code. A session named `server` appears. Create sessions from there, or ask a session to run `spawn-session.sh <name> --repo https://github.com/you/repo`.
+
+## VS Code in the browser (optional)
+
+Build with `INSTALL_CODE_SERVER=1` and set `CODE_PASSWORD`: `http://host:8080/code?folder=/home/node/work/<repo>` opens that folder in code-server. Off unless the password is set. It is a shell in the container, so read [the notes](docs/configuration.md#vs-code-in-the-browser) before exposing it.
 
 ## Persistence (optional, recommended)
 
@@ -84,6 +88,7 @@ Node 22 (Debian bookworm), tmux, git, curl, jq, rclone, openssh-client, a non-ro
 
 | Script | Purpose |
 |---|---|
+| `health.js` | Gateway on `PORT`: health `ok`, and the `/code` proxy to code-server. |
 | `entrypoint.sh` | Boot: restore, seed config, health endpoint, backup loop, hooks, the tmux `server` session. |
 | `spawn-session.sh`, `list-sessions.sh`, `kill-session.sh` | More Claude Code sessions in tmux, optionally on a cloned repo (`MAX_SESSIONS` caps them). |
 | `backup.sh`, `restore.sh`, `upload-login.sh`, `lease.sh` | Persistence. |
