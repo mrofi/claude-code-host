@@ -6,7 +6,6 @@ Build your own image `FROM` the base and add files. You never edit the base scri
 FROM ghcr.io/mrofi/claude-code-host:latest
 
 USER root
-RUN npm install -g @anthropic-ai/claude-code@2.1.296      # the base does not ship Claude Code
 RUN apt-get update && apt-get install -y --no-install-recommends ripgrep && rm -rf /var/lib/apt/lists/*
 USER node
 

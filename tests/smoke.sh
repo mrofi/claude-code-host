@@ -131,7 +131,7 @@ grep -q '40-skipped' <<<"$logs_h" && bad "a non-executable hook was run" || pass
 docker rm -f smoke-a >/dev/null
 
 # --- 9. a derived image (examples/extend) adds tools, a hook, a shutdown hook, CLAUDE.md and settings
-if docker build -q --build-arg "BASE=$IMAGE" --build-arg INSTALL_CLAUDE=0 -t claude-host-smoke-ext "$root/examples/extend" >/dev/null; then
+if docker build -q --build-arg "BASE=$IMAGE" -t claude-host-smoke-ext "$root/examples/extend" >/dev/null; then
   pass "examples/extend builds on the base image"
   docker run -d --name smoke-e --network host -v "$work/claude":/home/node/bin/claude:ro -e PORT=17873 -e GREETING=hi claude-host-smoke-ext >/dev/null
   sleep 6

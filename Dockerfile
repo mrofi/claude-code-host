@@ -1,13 +1,11 @@
 # Claude Code host: tmux sessions reachable through Remote Control, with optional S3 persistence.
 # Build args:
-#   INSTALL_CLAUDE=1  install Claude Code from npm (default, for building it yourself).
-#                     The published base image is built with INSTALL_CLAUDE=0; derived images add it.
-#   CLAUDE_CODE_VERSION  version to install when INSTALL_CLAUDE=1.
+#   CLAUDE_CODE_VERSION  version of Claude Code to install from npm (default: latest). Claude Code is always installed,
+#                        under Anthropic's terms (see README).
 #   INSTALL_CODE_SERVER=1  add code-server (VS Code in the browser at /code, needs CODE_PASSWORD at run time). Default 0.
 #   CODE_SERVER_VERSION  version to install when INSTALL_CODE_SERVER=1.
 FROM node:22-bookworm-slim
 
-ARG INSTALL_CLAUDE=1
 ARG CLAUDE_CODE_VERSION=latest
 ARG INSTALL_CODE_SERVER=0
 ARG CODE_SERVER_VERSION=4.96.4
@@ -20,9 +18,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       tmux git curl ca-certificates openssh-client jq rclone procps \
  && rm -rf /var/lib/apt/lists/* \
- && if [ "$INSTALL_CLAUDE" = "1" ]; then \
-      npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" && npm cache clean --force; \
-    fi
+ && npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" && npm cache clean --force
 
 # code-server from the official release tarball (not the curl|sh installer), unpacked under /usr/local.
 RUN if [ "$INSTALL_CODE_SERVER" = "1" ]; then \

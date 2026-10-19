@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build the base image (without Claude Code, like the published one)
-        run: docker build --build-arg INSTALL_CLAUDE=0 -t claude-host .
+      - name: Build the base image
+        run: docker build -t claude-host .
       - name: Smoke test (MinIO, stub claude, derived image)
         run: bash tests/smoke.sh claude-host
       - name: Layer scan

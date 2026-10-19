@@ -15,25 +15,14 @@ Single user, one machine. It is not a multi-tenant service.
 ## Read this first
 
 - **Sessions run with `--dangerously-skip-permissions`.** Nobody approves their commands. Anything the container can reach (tokens in its environment, cloud credentials, networks), a prompt-injected repo or web page could use. Give the container only credentials you are willing to lose, preferably read-only.
-- **Claude Code is not open source and this image does not include it.** The published image leaves it out; you install it in your own Dockerfile (below), under [Anthropic's terms](https://www.anthropic.com/legal/commercial-terms). If you build this repo yourself with `INSTALL_CLAUDE=1` (the default), npm downloads it on your machine.
+- **This image includes Claude Code, which is not open source.** It is installed from npm (`@anthropic-ai/claude-code`) at build time and is subject to [Anthropic's commercial terms](https://www.anthropic.com/legal/commercial-terms) (or the consumer terms, depending on your account), not to this repo's license. Pulling or building this image does not grant you any rights to Claude Code, so you are responsible for using it, and any redistribution of an image that contains it, in line with those terms. Pin the version with `--build-arg CLAUDE_CODE_VERSION=<version>`.
 - **Git tokens.** `GITHUB_TOKEN` / `AZDO_PAT` are used by every git command in the container, pushes included, and sessions run without permission prompts. Prefer a read-only fine-grained token; a write token lets a prompt-injected repo or page push to those repos.
 - **Remote Control needs a claude.ai login** (a subscription account), not an API key. Whoever holds the login credentials has your account, so treat the bucket and its encryption password accordingly.
 - The refresh behavior of a login that was copied from another machine is only lightly tested (see [docs/how-it-works.md](docs/how-it-works.md#login)).
 
 ## Quick start
 
-1. Make your own image. The base has no Claude Code, so add it:
-
-   ```dockerfile
-   FROM ghcr.io/mrofi/claude-code-host:latest
-   USER root
-   RUN npm install -g @anthropic-ai/claude-code@2.1.296   # pin the version you tested
-   USER node
-   ```
-
-   `docker build -t my-claude-host .`
-
-   (Or build this repo directly, which includes Claude Code: `docker build -t my-claude-host .`)
+1. Use the published image (`ghcr.io/mrofi/claude-code-host:latest`, which includes Claude Code), or build this repo: `docker build -t my-claude-host .` (add `--build-arg CLAUDE_CODE_VERSION=<version>` to pin Claude Code). For `/code` use the `-code` image (`:latest-code`) or build with `--build-arg INSTALL_CODE_SERVER=1`. To add your own tools, build `FROM` it ([docs/extending.md](docs/extending.md)).
 
 2. Run it. Without a bucket nothing is persisted, but it works:
 
@@ -51,7 +40,7 @@ Single user, one machine. It is not a multi-tenant service.
 
 ## VS Code in the browser (optional)
 
-Build with `INSTALL_CODE_SERVER=1` and set `CODE_PASSWORD`: `http://host:8080/code?folder=/home/node/work/<repo>` opens that folder in code-server. Off unless the password is set. Set `CODE_URL` to the host's public URL and ask a session for "the VS Code link": it runs `code-url.sh` and hands you the URL. It is a shell in the container, so read [the notes](docs/configuration.md#vs-code-in-the-browser) before exposing it.
+Use the `-code` image (`ghcr.io/mrofi/claude-code-host:latest-code`, or build with `--build-arg INSTALL_CODE_SERVER=1`; the arg has no effect in an image derived `FROM` the base) and set `CODE_PASSWORD`: `http://host:8080/code?folder=/home/node/work/<repo>` opens that folder in code-server. Off unless the password is set. Set `CODE_URL` to the host's public URL and ask a session for "the VS Code link": it runs `code-url.sh` and hands you the URL. It is a shell in the container, so read [the notes](docs/configuration.md#vs-code-in-the-browser) before exposing it.
 
 ## Persistence (optional, recommended)
 
@@ -100,7 +89,7 @@ Node 22 (Debian bookworm), tmux, git, curl, jq, rclone, openssh-client, a non-ro
 ```
 bats tests/*.bats                               # unit tests (needs bats, rclone, tmux, jq, git, socat)
 shellcheck -x -P SCRIPTDIR scripts/*.sh tests/*.sh
-docker build --build-arg INSTALL_CLAUDE=0 -t claude-host .
+docker build -t claude-host .
 tests/smoke.sh claude-host                      # boots the image against a local S3 server (rclone serve s3) with a stub claude
 tests/layer-scan.sh claude-host                 # looks for secrets in every image layer
 ```

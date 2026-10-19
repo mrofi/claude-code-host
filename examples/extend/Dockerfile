@@ -4,12 +4,8 @@
 ARG BASE=ghcr.io/mrofi/claude-code-host:latest
 FROM ${BASE}
 
-# The published base image does not include Claude Code: install it here (needs root for a global npm install).
-ARG INSTALL_CLAUDE=1
-USER root
-RUN if [ "$INSTALL_CLAUDE" = "1" ]; then npm install -g @anthropic-ai/claude-code && npm cache clean --force; fi
-
 # Add whatever tools your sessions need. System packages need root.
+USER root
 RUN apt-get update && apt-get install -y --no-install-recommends ripgrep \
  && rm -rf /var/lib/apt/lists/*
 USER node

@@ -1,7 +1,8 @@
 name: publish
-# Publishes the base image (WITHOUT Claude Code) to GitHub Container Registry.
+# Publishes the base image (including Claude Code) to GitHub Container Registry.
 #   push a tag v1.2.3 -> :1.2.3, :1.2, :1 and :latest. Nothing is published by a plain push.
 #   "Run workflow" (manual) -> builds and pushes the branch as :edge.
+# Each also gets a -code variant built with INSTALL_CODE_SERVER=1 (:1.2.3-code, :1.2-code, :1-code, :latest-code, :edge-code).
 on:
   push:
     tags: ["v*"]
@@ -37,7 +38,25 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          build-args: INSTALL_CLAUDE=0
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - id: meta-code
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/claude-code-host
+          flavor: suffix=-code
+          tags: |
+            type=edge,branch=${{ github.event.repository.default_branch }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          build-args: INSTALL_CODE_SERVER=1
+          push: true
+          tags: ${{ steps.meta-code.outputs.tags }}
+          labels: ${{ steps.meta-code.outputs.labels }}

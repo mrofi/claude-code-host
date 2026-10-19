@@ -91,7 +91,7 @@ run_hooks() { # dir, timeout seconds
 run_hooks "${ENTRYPOINT_D:-$HOME/entrypoint.d}" "${HOOK_TIMEOUT:-60}"
 
 if ! command -v claude >/dev/null 2>&1; then
-  echo "[entrypoint] ERROR the 'claude' command is not installed in this image. The published base image does not include Claude Code; add it in your own Dockerfile (see README, 'Install Claude Code'). The container stays up so you can see this message."
+  echo "[entrypoint] ERROR the 'claude' command is not installed in this image. The image build should have installed it (npm install -g @anthropic-ai/claude-code), check the build log or your derived Dockerfile. The container stays up so you can see this message."
 fi
 
 case "$mode" in
