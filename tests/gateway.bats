@@ -12,6 +12,9 @@ setup() {
     s.on("upgrade",(q,so)=>{so.write("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\npath:"+q.url);so.end()});
     s.listen('"$UP"',"127.0.0.1")' &
   echo $! > "$BATS_TEST_TMPDIR/up.pid"
+  # The stub must be listening before the tests start: health.js answering only means health.js is up, and
+  # a request that reaches a stub not yet listening gets a 502.
+  for _ in $(seq 50); do curl -s -o /dev/null "127.0.0.1:$UP/" && break; sleep 0.1; done
 }
 teardown() {
   kill "$(cat "$BATS_TEST_TMPDIR/up.pid")" 2>/dev/null || true
