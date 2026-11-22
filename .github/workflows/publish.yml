@@ -24,8 +24,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # The images are multi-arch: the labels sit on each platform's image, and the annotations (source,
+      # description, ...) also go on the index, where GitHub reads them for a multi-arch package.
       - id: meta
         uses: docker/metadata-action@v5
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: ghcr.io/${{ github.repository_owner }}/claude-code-host
           tags: |
@@ -41,11 +45,17 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
       - id: meta-code
         uses: docker/metadata-action@v5
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: ghcr.io/${{ github.repository_owner }}/claude-code-host
-          flavor: suffix=-code
+          # onlatest: without it the suffix skips the tag "latest", and this build would overwrite the base
+          # image's :latest with the code-server one.
+          flavor: |
+            suffix=-code,onlatest=true
           tags: |
             type=edge,branch=${{ github.event.repository.default_branch }}
             type=semver,pattern={{version}}
@@ -60,3 +70,4 @@ jobs:
           push: true
           tags: ${{ steps.meta-code.outputs.tags }}
           labels: ${{ steps.meta-code.outputs.labels }}
+          annotations: ${{ steps.meta-code.outputs.annotations }}

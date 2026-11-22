@@ -12,6 +12,8 @@ It is a **base image**: you build your own Dockerfile on top of it and add the t
 
 Single user, one machine. It is not a multi-tenant service.
 
+**Image:** [`ghcr.io/mrofi/claude-code-host`](https://github.com/users/mrofi/packages/container/package/claude-code-host): `:latest` (and `:<version>`), or `:latest-code` with VS Code in the browser. Every tag is listed on that page.
+
 ## Read this first
 
 - **Sessions run with `--dangerously-skip-permissions`.** Nobody approves their commands. Anything the container can reach (tokens in its environment, cloud credentials, networks), a prompt-injected repo or web page could use. Give the container only credentials you are willing to lose, preferably read-only.
@@ -64,6 +66,7 @@ Derived images add four kinds of things without editing any base script:
 | Shutdown logic | `/home/node/shutdown.d/*.sh` | Run on `SIGTERM`, before the final backup. |
 | Instructions for the sessions | `/home/node/config/CLAUDE.d/*.md` | Appended to the `CLAUDE.md` the sessions read (tell them about your tools). |
 | Claude Code settings | `/home/node/config/settings.d/*.json` | Merged into `~/.claude/settings.json`. |
+| Your own backed-up directories | `BACKUP_EXTRA_DIRS` | Restored at boot and backed up with Claude Code's state. |
 
 Plus any packages or tools you install. A complete, tested example is in [`examples/extend`](examples/extend); the guide is [docs/extending.md](docs/extending.md).
 
