@@ -16,6 +16,8 @@ Everything is an environment variable. Unset optional ones are skipped quietly. 
 | `ALLOW_UNENCRYPTED` | | unset | `1` allows a bucket without encryption. Not recommended: it holds your Claude login. |
 | `BACKUP_INTERVAL` | | `300` | Seconds between backups. A backup also runs on `SIGTERM`. |
 | `LEASE_TTL` | | `900` | Seconds after which another instance's lease counts as stale. Keep it above `BACKUP_INTERVAL`. |
+| `BACKUP_EXTRA_DIRS` | | | More directories to back up, for derived images: `name=/abs/path`, several separated by spaces or commas. See [extending](extending.md#backing-up-your-own-directories-backup_extra_dirs). |
+| `EXTRA_RESTORE_TIMEOUT` | | `600` | Seconds the restore of `BACKUP_EXTRA_DIRS` may take at boot. |
 | `RCLONE_CONTIMEOUT`, `RCLONE_TIMEOUT`, `RCLONE_RETRIES`, `RCLONE_LOW_LEVEL_RETRIES` | | `10s`, `30s`, `1`, `1` | How long an unreachable bucket may delay boot. Rarely changed. |
 
 ## Sessions

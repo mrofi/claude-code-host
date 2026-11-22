@@ -50,6 +50,10 @@ health_pid=$!
 
 # Hard cap as a second guard on top of rclone's own timeouts.
 timeout 90 "$here/restore.sh" || echo "[entrypoint] restore failed, continuing without restored state"
+# Directories of derived images (BACKUP_EXTRA_DIRS), after Claude Code's own and with their own time limit. One
+# that is not restored is left out of the backup until the next boot, so its backup is never overwritten.
+timeout "${EXTRA_RESTORE_TIMEOUT:-600}" "$here/restore.sh" --extra \
+  || echo "[entrypoint] restore of BACKUP_EXTRA_DIRS failed or timed out (see above), continuing"
 "$here/lease.sh" take || echo "[entrypoint] could not claim the backup lease (see above), continuing"
 "$here/seed-state.sh" "$workdir"
 "$here/seed-config.sh" || echo "[entrypoint] seed-config failed (see above), continuing"

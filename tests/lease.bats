@@ -100,3 +100,19 @@ STUB
   run grep -q 'rclone rcat' "$BATS_TEST_DIRNAME/../scripts/lease.sh"
   [ "$status" -ne 0 ]
 }
+
+@test "with encryption and BACKUP_REMOTE from the environment, the lease is written and obeyed" {
+  export CRYPT_PASSWORD=pw
+  run as A lease.sh take
+  [ "$status" -eq 0 ]
+  # backup.sh starts lease.sh itself: the remote must not be wrapped in crypt twice on the way.
+  run as A backup.sh
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"could not write the lease"* ]]
+  [[ "$output" != *"failed"* ]]
+  [ ! -e "$BACKUP_REMOTE/lease" ]   # encrypted: the name is not readable in the bucket
+  run as B lease.sh take
+  run as A backup.sh
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"owns this backup prefix"* ]]
+}

@@ -29,7 +29,12 @@ export RCLONE_S3_NO_CHECK_BUCKET=true
 
 # Optional client-side encryption (rclone crypt). The password is obscured via stdin so it never
 # appears in a process list. CRYPT_SALT is optional but recommended.
-RAW_REMOTE="$BACKUP_REMOTE"
+# The unencrypted remote is remembered in an exported variable: when BACKUP_REMOTE comes from the
+# environment, the crypt wrapper below changes the exported value, and a script started from this one
+# (backup.sh runs lease.sh) would otherwise wrap it a second time.
+RAW_REMOTE="${CC_RAW_REMOTE:-$BACKUP_REMOTE}"
+export CC_RAW_REMOTE="$RAW_REMOTE"
+BACKUP_REMOTE="$RAW_REMOTE"
 if [[ -n "${CRYPT_PASSWORD:-}" ]]; then
   RCLONE_CRYPT_PASSWORD="$(printf %s "$CRYPT_PASSWORD" | rclone obscure -)"
   export RCLONE_CRYPT_PASSWORD
@@ -60,6 +65,27 @@ check_crypt_access() {
     return 1
   fi
 }
+
+# Directories a derived image adds to the backup: BACKUP_EXTRA_DIRS="name=/abs/path other=/abs/path2"
+# (spaces or commas between entries). Each is kept under extra/<name> in the bucket exactly as it is, with
+# none of the excludes below, and restored by `restore.sh --extra`. An entry that is not valid is skipped.
+# shellcheck disable=SC2034
+EXTRA_NAMES=()
+declare -A EXTRA_DIRS=()
+_extra="${BACKUP_EXTRA_DIRS:-}"
+for _entry in ${_extra//,/ }; do
+  _name="${_entry%%=*}"; _dir="${_entry#*=}"
+  if [[ "$_entry" != *=* || ! "$_name" =~ ^[a-z0-9][a-z0-9_-]{0,31}$ || "$_dir" != /* || -n "${EXTRA_DIRS[$_name]:-}" ]]; then
+    log "${0##*/}" "WARNING BACKUP_EXTRA_DIRS entry '$_entry' skipped (want name=/absolute/path, name: a-z 0-9 _ -, each name once)"
+    continue
+  fi
+  EXTRA_NAMES+=("$_name"); EXTRA_DIRS[$_name]="$_dir"
+done
+unset _extra _entry _name _dir
+# An extra directory is backed up only once this boot has restored it (or found nothing to restore):
+# syncing a directory whose restore failed would replace the backup with an empty or partial copy.
+# shellcheck disable=SC2034
+RESTORED_MARKS="${HOME}/.cache/claude-code-host/restored"
 
 # Paths excluded from backup: caches and per-machine state that are large or useless elsewhere.
 # Anchored with a leading / so only the top level matches: plugins/cache/ holds installed plugin files and must be kept.

@@ -202,3 +202,82 @@ JSON
   [ -f "$BACKUP_REMOTE/claude/plugins/cache/p/skills/x/SKILL.md" ]
   [ ! -e "$BACKUP_REMOTE/claude/cache/big" ]
 }
+
+@test "extra directories round-trip under extra/<name>, with nothing excluded" {
+  X="$HOME/tooldata"
+  export BACKUP_EXTRA_DIRS="tool=$X"
+  run restore.sh --extra
+  [ "$status" -eq 0 ]
+  mkdir -p "$X/cache" "$X/debug" "$X/releases/v1"
+  echo c > "$X/cache/x"; echo d > "$X/debug/x.log"; echo '{}' > "$X/composer.lock"; echo m > "$X/releases/v1/meta.json"
+  run backup.sh
+  [ "$status" -eq 0 ]
+  [ -f "$BACKUP_REMOTE/extra/tool/cache/x" ]
+  [ -f "$BACKUP_REMOTE/extra/tool/debug/x.log" ]
+  [ -f "$BACKUP_REMOTE/extra/tool/composer.lock" ]
+  [ -f "$BACKUP_REMOTE/extra/tool/releases/v1/meta.json" ]
+
+  export HOME="$BATS_TEST_TMPDIR/home2"; mkdir -p "$HOME"
+  export BACKUP_EXTRA_DIRS="tool=$HOME/tooldata"
+  run restore.sh --extra
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"tool restored"* ]]
+  [ "$(cat "$HOME/tooldata/releases/v1/meta.json")" = "m" ]
+  [ -f "$HOME/tooldata/composer.lock" ]
+}
+
+@test "an extra directory that was not restored at boot is not backed up" {
+  X="$HOME/tooldata"; mkdir -p "$X"; echo partial > "$X/f"
+  mkdir -p "$BACKUP_REMOTE/extra/tool"; echo good > "$BACKUP_REMOTE/extra/tool/f"
+  export BACKUP_EXTRA_DIRS="tool=$X"
+  run backup.sh
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"not restored at boot"* ]]
+  [ "$(cat "$BACKUP_REMOTE/extra/tool/f")" = "good" ]
+}
+
+@test "the restore of extra directories does not touch Claude Code's own, nor the other way round" {
+  mkdir -p "$BACKUP_REMOTE/claude" "$BACKUP_REMOTE/extra/tool"
+  echo '{"t":1}' > "$BACKUP_REMOTE/claude/.credentials.json"; echo t > "$BACKUP_REMOTE/extra/tool/f"
+  export BACKUP_EXTRA_DIRS="tool=$HOME/tooldata"
+  run restore.sh --extra
+  [ "$status" -eq 0 ]
+  [ -f "$HOME/tooldata/f" ]
+  [ ! -e "$HOME/.claude/.credentials.json" ]
+  run restore.sh
+  [ "$status" -eq 0 ]
+  [ -f "$HOME/.claude/.credentials.json" ]
+  [ ! -e "$HOME/.claude/extra" ]
+}
+
+@test "a remote that holds only extra directories is nothing to restore for Claude Code" {
+  mkdir -p "$BACKUP_REMOTE/extra/tool"; echo t > "$BACKUP_REMOTE/extra/tool/f"
+  run restore.sh
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"nothing to restore"* ]]
+}
+
+@test "extra directories are backed up even before ~/.claude exists" {
+  mkdir -p "$HOME/tooldata"; echo y > "$HOME/tooldata/f"
+  export BACKUP_EXTRA_DIRS="tool=$HOME/tooldata"
+  run restore.sh --extra
+  rm -rf "$HOME/.claude"
+  run backup.sh
+  [ "$status" -eq 0 ]
+  [ -f "$BACKUP_REMOTE/extra/tool/f" ]
+  [ ! -e "$BACKUP_REMOTE/claude" ]
+}
+
+@test "BACKUP_EXTRA_DIRS entries that are not valid are skipped with a warning" {
+  mkdir -p "$HOME/ok"; echo y > "$HOME/ok/f"
+  export BACKUP_EXTRA_DIRS="Bad=/x,rel=relative/path noequals ok=$HOME/ok ok=$HOME/other"
+  run restore.sh --extra
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"'Bad=/x' skipped"* ]]
+  [[ "$output" == *"'rel=relative/path' skipped"* ]]
+  [[ "$output" == *"'noequals' skipped"* ]]
+  [[ "$output" == *"'ok=$HOME/other' skipped"* ]]
+  run backup.sh
+  [ -f "$BACKUP_REMOTE/extra/ok/f" ]
+  [ ! -e "$BACKUP_REMOTE/extra/rel" ]
+}
